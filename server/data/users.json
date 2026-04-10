@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@example.com",
+    "passwordHash": "$2b$10$RAmPZjS2cWJ.uzWmi0IRm.QMbV/j73dACVRk/Rw3OCkqc3/wfrIUG",
+    "salt": "$2b$10$RAmPZjS2cWJ.uzWmi0IRm.",
+    "createdAt": "2026-04-10T16:49:27.405Z",
+    "role": "admin"
+  }
+]
