@@ -87,5 +87,18 @@
     "createdAt": "2026-04-10T16:39:59.143Z",
     "suspiciousScore": 0,
     "isSuspicious": false
+  },
+  {
+    "id": 7,
+    "ipAddress": "8.8.8.8",
+    "requestCount": 184444,
+    "failedLogins": 1000,
+    "uniqueEndpoints": 210,
+    "requestsPerMinute": 5000,
+    "suspiciousPatterns": 47,
+    "location": "test",
+    "notes": "",
+    "lastSeen": "2026-04-10T18:54",
+    "createdAt": "2026-04-10T18:55:35.764Z"
   }
 ]

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../utils/axiosConfig";
 import {
   Box,
-  Grid,
   Card,
   CardContent,
   Typography,
@@ -19,7 +18,10 @@ import {
   Tooltip,
   IconButton,
   Collapse,
+  Grid,
+  Divider,
 } from "@mui/material";
+
 import {
   TrendingUp as TrendingUpIcon,
   Warning as WarningIcon,
@@ -29,9 +31,9 @@ import {
   Speed as SpeedIcon,
   Lock as LockIcon,
   Route as RouteIcon,
-  Pattern as PatternIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
+  Security as SecurityIcon,
+  Search as SearchIcon,
+  Block as BlockIcon,
 } from "@mui/icons-material";
 
 const API_URL = "http://localhost:3000/api";
@@ -49,13 +51,14 @@ const Statistics = () => {
   const fetchStatistics = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/statistics`);
-      console.log("Statistics response:", response.data);
+      const response = await axiosInstance.get("/statistics");
       setStats(response.data);
       setError(null);
     } catch (err) {
-      console.error("Error fetching statistics:", err);
-      setError("Ошибка загрузки статистики: " + err.message);
+      setError(
+        "Ошибка загрузки статистики: " +
+          (err.response?.data?.error || err.message),
+      );
     } finally {
       setLoading(false);
     }
@@ -68,11 +71,18 @@ const Statistics = () => {
     return "success";
   };
 
-  const getRiskText = (score) => {
-    if (score >= 3) return "Критический риск - немедленное реагирование";
-    if (score >= 2) return "Высокий риск - требует внимания";
-    if (score >= 1) return "Средний риск - мониторинг";
-    return "Низкий риск - безопасно";
+  const getRiskLabel = (score) => {
+    if (score >= 3) return "КРИТИЧЕСКИЙ";
+    if (score >= 2) return "ВЫСОКИЙ";
+    if (score >= 1) return "СРЕДНИЙ";
+    return "НИЗКИЙ";
+  };
+
+  const getRiskDescription = (score) => {
+    if (score >= 3) return "Требует немедленного вмешательства";
+    if (score >= 2) return "Рекомендуется блокировка";
+    if (score >= 1) return "Требуется мониторинг";
+    return "Безопасно";
   };
 
   if (loading) {
@@ -88,98 +98,111 @@ const Statistics = () => {
     );
   }
 
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ mt: 2 }}>
-        {error}
-      </Alert>
-    );
-  }
-
-  if (!stats) {
-    return (
-      <Alert severity="info" sx={{ mt: 2 }}>
-        Нет данных для отображения
-      </Alert>
-    );
-  }
+  if (error) return <Alert severity="error">{error}</Alert>;
+  if (!stats) return <Alert severity="info">Нет данных</Alert>;
 
   return (
-    <Box>
+    <Box sx={{ p: 2 }}>
+      {/* HEADER */}
       <Box
         display="flex"
         justifyContent="space-between"
         alignItems="center"
         mb={3}
       >
-        <Typography variant="h4" component="h1">
-          Статистика подозрительных IP
+        <Typography variant="h4" fontWeight="bold">
+          📊 Статистика подозрительных IP
         </Typography>
-        <Tooltip title="Объяснение метрик">
+
+        <Tooltip title="Что означают эти цифры?">
           <IconButton onClick={() => setShowExplanation(!showExplanation)}>
             <InfoIcon />
           </IconButton>
         </Tooltip>
       </Box>
 
+      {/* ОБЪЯСНЕНИЕ МЕТРИК */}
       <Collapse in={showExplanation}>
-        <Paper
-          sx={{
-            p: 3,
-            mb: 3,
-            bgcolor: "info.light",
-            color: "info.contrastText",
-          }}
-        >
-          <Typography variant="h6" gutterBottom>
-            📊 Как интерпретировать метрики?
+        <Paper sx={{ p: 3, mb: 3, bgcolor: "#e3f2fd" }}>
+          <Typography
+            variant="h6"
+            gutterBottom
+            display="flex"
+            alignItems="center"
+            gap={1}
+          >
+            <SecurityIcon /> Как понимать статистику безопасности?
           </Typography>
-          <Grid container spacing={2}>
+
+          <Grid container spacing={3} sx={{ mt: 1 }}>
             <Grid item xs={12} md={6}>
-              <Typography variant="body2" paragraph>
-                <strong>🔢 Подозрительный счет (0-4):</strong>
-                <br />
-                • 0-1: Низкий риск - нормальное поведение
-                <br />
-                • 2: Средний риск - возможны подозрительные действия
-                <br />• 3-4: Высокий/Критический риск - требуется немедленное
-                внимание
+              <Typography variant="subtitle1" fontWeight="bold">
+                🔢 Подозрительный счет (0-4)
+              </Typography>
+              <Typography variant="body2">
+                • <strong>0-1 (Низкий риск)</strong> — нормальное поведение,
+                можно не беспокоиться
+                <br />• <strong>2 (Средний риск)</strong> — есть подозрительная
+                активность, стоит присмотреться
+                <br />• <strong>3 (Высокий риск)</strong> — высокая вероятность
+                атаки, рекомендуется блокировка
+                <br />• <strong>4 (Критический риск)</strong> — активная атака,
+                требуется немедленное вмешательство
               </Typography>
             </Grid>
+
             <Grid item xs={12} md={6}>
-              <Typography variant="body2" paragraph>
-                <strong>⚠️ Факторы подозрительности:</strong>
-                <br />
-                • 1000 запросов - аномальный трафик
-                <br />
-                • 50 неудачных логинов - попытка подбора пароля
-                <br />
-                • 100 уникальных эндпоинтов - сканирование системы
-                <br />
-                • 60 запросов/мин - DDoS атака
-                <br />• 5 подозрительных паттернов - вредоносная активность
+              <Typography variant="subtitle1" fontWeight="bold">
+                ⚠️ Что означает каждая метрика?
+              </Typography>
+              <Typography variant="body2">
+                • <strong>Запросы</strong> — общее количество HTTP запросов
+                (высокое значение может указывать на DDoS)
+                <br />• <strong>Неудачные логины</strong> — попытки подбора
+                пароля (brute force атака)
+                <br />• <strong>Уникальные эндпоинты</strong> — сканирование
+                системы на уязвимости
+                <br />• <strong>Запросов/мин</strong> — интенсивность трафика
+                (аномально высокое значение = атака)
+                <br />• <strong>Подозрительные паттерны</strong> — обнаружены
+                вредоносные сигнатуры
               </Typography>
             </Grid>
           </Grid>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="body2" color="text.secondary">
+            💡 <strong>Рекомендация:</strong> IP с критическим риском (3-4)
+            рекомендуется немедленно заблокировать. IP со средним риском (2) —
+            усилить мониторинг.
+          </Typography>
         </Paper>
       </Collapse>
 
+      {/* ОСНОВНЫЕ KPI МЕТРИКИ */}
+      <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 2 }}>
+        📈 Общие показатели
+      </Typography>
+
       <Grid container spacing={3} mb={4}>
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
+          <Card sx={{ height: "100%" }}>
             <CardContent>
               <Box
                 display="flex"
-                alignItems="center"
                 justifyContent="space-between"
+                alignItems="center"
               >
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography variant="body2" color="textSecondary">
                     Всего IP адресов
                   </Typography>
-                  <Typography variant="h3">{stats.totalIPs || 0}</Typography>
+                  <Typography variant="h3" fontWeight="bold">
+                    {stats.totalIPs || 0}
+                  </Typography>
                   <Typography variant="caption" color="textSecondary">
-                    Отслеживаемых узлов
+                    отслеживается в системе
                   </Typography>
                 </Box>
                 <PublicIcon sx={{ fontSize: 48, color: "primary.main" }} />
@@ -191,26 +214,30 @@ const Statistics = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Card
             sx={{
-              bgcolor: stats.suspiciousCount > 0 ? "error.light" : "inherit",
+              height: "100%",
+              bgcolor: stats.suspiciousCount > 0 ? "#ffebee" : "inherit",
             }}
           >
             <CardContent>
               <Box
                 display="flex"
-                alignItems="center"
                 justifyContent="space-between"
+                alignItems="center"
               >
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography variant="body2" color="textSecondary">
                     Подозрительные IP
                   </Typography>
-                  <Typography variant="h3" color="error">
+                  <Typography variant="h3" fontWeight="bold" color="error">
                     {stats.suspiciousCount || 0}
                   </Typography>
                   <Typography variant="caption" color="textSecondary">
-                    {((stats.suspiciousCount / stats.totalIPs) * 100).toFixed(
-                      1,
-                    )}
+                    {stats.totalIPs > 0
+                      ? (
+                          (stats.suspiciousCount / stats.totalIPs) *
+                          100
+                        ).toFixed(1)
+                      : 0}
                     % от всех IP
                   </Typography>
                 </Box>
@@ -221,22 +248,22 @@ const Statistics = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
+          <Card sx={{ height: "100%" }}>
             <CardContent>
               <Box
                 display="flex"
-                alignItems="center"
                 justifyContent="space-between"
+                alignItems="center"
               >
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography variant="body2" color="textSecondary">
                     Критический риск
                   </Typography>
-                  <Typography variant="h3" color="error">
+                  <Typography variant="h3" fontWeight="bold" color="error">
                     {stats.highRiskCount || 0}
                   </Typography>
                   <Typography variant="caption" color="textSecondary">
-                    Требуют немедленного вмешательства
+                    требуют немедленной блокировки
                   </Typography>
                 </Box>
                 <ErrorIcon sx={{ fontSize: 48, color: "error.main" }} />
@@ -246,24 +273,24 @@ const Statistics = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
+          <Card sx={{ height: "100%" }}>
             <CardContent>
               <Box
                 display="flex"
-                alignItems="center"
                 justifyContent="space-between"
+                alignItems="center"
               >
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
-                    Средний риск
+                  <Typography variant="body2" color="textSecondary">
+                    Средний уровень угрозы
                   </Typography>
-                  <Typography variant="h3">
+                  <Typography variant="h3" fontWeight="bold">
                     {stats.averageSuspiciousScore
                       ? stats.averageSuspiciousScore.toFixed(1)
                       : "0.0"}
                   </Typography>
                   <Typography variant="caption" color="textSecondary">
-                    /4 - общий уровень угрозы
+                    из 4 возможных
                   </Typography>
                 </Box>
                 <TrendingUpIcon sx={{ fontSize: 48, color: "info.main" }} />
@@ -273,31 +300,39 @@ const Statistics = () => {
         </Grid>
       </Grid>
 
-      {/* Дополнительные метрики */}
+      {/* ДЕТАЛЬНЫЕ МЕТРИКИ АКТИВНОСТИ */}
+      <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 2 }}>
+        🎯 Детальный анализ угроз
+      </Typography>
+
       <Grid container spacing={3} mb={4}>
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <SpeedIcon color="primary" />
+                <SpeedIcon sx={{ fontSize: 40, color: "primary.main" }} />
                 <Box>
                   <Typography variant="body2" color="textSecondary">
-                    Общий трафик
+                    Общий трафик от подозрительных IP
                   </Typography>
-                  <Typography variant="h6">
-                    {stats.totalIPs > 0
-                      ? (
-                          stats.topSuspiciousIPs?.reduce(
-                            (sum, ip) => sum + ip.requestCount,
-                            0,
-                          ) || 0
-                        ).toLocaleString()
-                      : 0}{" "}
-                    запросов
+                  <Typography variant="h4" fontWeight="bold">
+                    {(
+                      stats.topSuspiciousIPs?.reduce(
+                        (sum, ip) => sum + (ip.requestCount || 0),
+                        0,
+                      ) || 0
+                    ).toLocaleString()}
                   </Typography>
                   <Typography variant="caption" color="textSecondary">
-                    от подозрительных IP
+                    HTTP запросов
                   </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Chip
+                      size="small"
+                      label="Может указывать на DDoS атаку"
+                      variant="outlined"
+                    />
+                  </Box>
                 </Box>
               </Box>
             </CardContent>
@@ -308,20 +343,28 @@ const Statistics = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <LockIcon color="error" />
+                <LockIcon sx={{ fontSize: 40, color: "error.main" }} />
                 <Box>
                   <Typography variant="body2" color="textSecondary">
-                    Неудачных логинов
+                    Попытки взлома
                   </Typography>
-                  <Typography variant="h6">
+                  <Typography variant="h4" fontWeight="bold" color="error">
                     {stats.topSuspiciousIPs?.reduce(
-                      (sum, ip) => sum + ip.failedLogins,
+                      (sum, ip) => sum + (ip.failedLogins || 0),
                       0,
                     ) || 0}
                   </Typography>
                   <Typography variant="caption" color="textSecondary">
-                    попыток взлома
+                    неудачных логинов
                   </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Chip
+                      size="small"
+                      label="Brute force атака"
+                      variant="outlined"
+                      color="error"
+                    />
+                  </Box>
                 </Box>
               </Box>
             </CardContent>
@@ -332,20 +375,27 @@ const Statistics = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={2}>
-                <RouteIcon color="secondary" />
+                <SearchIcon sx={{ fontSize: 40, color: "secondary.main" }} />
                 <Box>
                   <Typography variant="body2" color="textSecondary">
                     Сканирование системы
                   </Typography>
-                  <Typography variant="h6">
+                  <Typography variant="h4" fontWeight="bold">
                     {stats.topSuspiciousIPs?.reduce(
-                      (sum, ip) => sum + ip.uniqueEndpoints,
+                      (sum, ip) => sum + (ip.uniqueEndpoints || 0),
                       0,
                     ) || 0}
                   </Typography>
                   <Typography variant="caption" color="textSecondary">
                     уникальных эндпоинтов
                   </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Chip
+                      size="small"
+                      label="Поиск уязвимостей"
+                      variant="outlined"
+                    />
+                  </Box>
                 </Box>
               </Box>
             </CardContent>
@@ -353,125 +403,194 @@ const Statistics = () => {
         </Grid>
       </Grid>
 
-      {/* Таблица подозрительных IP */}
+      {/* ТАБЛИЦА ПОДОЗРИТЕЛЬНЫХ IP */}
+      <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 2 }}>
+        🚨 Топ подозрительных IP адресов (требуют внимания)
+      </Typography>
+
       <Card>
         <CardContent>
-          <Typography variant="h5" gutterBottom>
-            🚨 Топ подозрительных IP адресов
-          </Typography>
-          <Typography variant="body2" color="textSecondary" paragraph>
-            IP адреса с наибольшим уровнем риска. Рекомендуется принять меры для
-            IP с критическим риском.
-          </Typography>
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: "#f5f5f5" }}>
+                  <TableCell>
+                    <strong>IP Адрес</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Уровень риска</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Запросы</strong>
+                    <br />
+                    <Typography variant="caption">(DDoS индикатор)</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Неудачные логины</strong>
+                    <br />
+                    <Typography variant="caption">(Brute force)</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Эндпоинты</strong>
+                    <br />
+                    <Typography variant="caption">(Сканирование)</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Местоположение</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Рекомендация</strong>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
 
-          {stats.topSuspiciousIPs && stats.topSuspiciousIPs.length > 0 ? (
-            <TableContainer component={Paper} variant="outlined">
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: "grey.100" }}>
-                    <TableCell>IP Адрес</TableCell>
-                    <TableCell align="center">Уровень риска</TableCell>
-                    <TableCell align="right">Запросы</TableCell>
-                    <TableCell align="right">Неудачные логины</TableCell>
-                    <TableCell align="right">Эндпоинты</TableCell>
-                    <TableCell>Местоположение</TableCell>
+              <TableBody>
+                {stats.topSuspiciousIPs?.map((ip) => (
+                  <TableRow key={ip.id} hover>
+                    <TableCell>
+                      <Typography fontWeight="medium">
+                        {ip.ipAddress}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Tooltip title={getRiskDescription(ip.suspiciousScore)}>
+                        <Chip
+                          size="small"
+                          label={`${ip.suspiciousScore}/4 - ${getRiskLabel(ip.suspiciousScore)}`}
+                          color={getRiskColor(ip.suspiciousScore)}
+                        />
+                      </Tooltip>
+                    </TableCell>
+
+                    <TableCell align="right">
+                      <strong>{ip.requestCount?.toLocaleString() || 0}</strong>
+                      <Typography
+                        variant="caption"
+                        display="block"
+                        color="textSecondary"
+                      >
+                        {ip.requestsPerMinute || 0}/мин
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell align="right">
+                      <strong
+                        style={{
+                          color: ip.failedLogins > 50 ? "#d32f2f" : "inherit",
+                        }}
+                      >
+                        {ip.failedLogins || 0}
+                      </strong>
+                    </TableCell>
+
+                    <TableCell align="right">
+                      {ip.uniqueEndpoints || 0}
+                    </TableCell>
+
+                    <TableCell>{ip.location || "Неизвестно"}</TableCell>
+
+                    <TableCell>
+                      {ip.suspiciousScore >= 3 ? (
+                        <Chip
+                          size="small"
+                          label="НЕМЕДЛЕННАЯ БЛОКИРОВКА"
+                          color="error"
+                          icon={<BlockIcon />}
+                        />
+                      ) : ip.suspiciousScore >= 2 ? (
+                        <Chip
+                          size="small"
+                          label="Усилить мониторинг"
+                          color="warning"
+                        />
+                      ) : (
+                        <Chip size="small" label="Наблюдение" color="info" />
+                      )}
+                    </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {stats.topSuspiciousIPs.map((ip, index) => (
-                    <TableRow key={ip.id} hover>
-                      <TableCell component="th" scope="row">
-                        <Typography fontWeight="medium">
-                          {ip.ipAddress}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          ID: {ip.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Tooltip title={getRiskText(ip.suspiciousScore)}>
-                          <Chip
-                            label={`${ip.suspiciousScore}/4 - ${getRiskText(ip.suspiciousScore).split(" - ")[0]}`}
-                            color={getRiskColor(ip.suspiciousScore)}
-                            size="small"
-                          />
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography fontWeight="medium">
-                          {ip.requestCount.toLocaleString()}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {ip.requestsPerMinute}/мин
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography color="error.main" fontWeight="medium">
-                          {ip.failedLogins}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          попыток
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">{ip.uniqueEndpoints}</TableCell>
-                      <TableCell>
-                        {ip.location || "Неизвестно"}
-                        {ip.suspiciousPatterns > 5 && (
-                          <Chip
-                            size="small"
-                            label={`${ip.suspiciousPatterns} паттернов`}
-                            color="error"
-                            variant="outlined"
-                            sx={{ ml: 1 }}
-                          />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Typography color="textSecondary" align="center" sx={{ py: 4 }}>
-              ✅ Нет подозрительных IP адресов. Система в безопасности!
-            </Typography>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {(!stats.topSuspiciousIPs || stats.topSuspiciousIPs.length === 0) && (
+            <Box textAlign="center" py={4}>
+              <Typography color="textSecondary">
+                ✅ Нет подозрительных IP адресов. Система в безопасности!
+              </Typography>
+            </Box>
           )}
         </CardContent>
       </Card>
 
-      {/* Рекомендации */}
-      <Paper sx={{ p: 3, mt: 3, bgcolor: "warning.light" }}>
-        <Typography variant="h6" gutterBottom>
+      {/* РЕКОМЕНДАЦИИ ПО ДЕЙСТВИЯМ */}
+      <Paper sx={{ p: 3, mt: 3, bgcolor: "#fff3e0" }}>
+        <Typography
+          variant="h6"
+          gutterBottom
+          display="flex"
+          alignItems="center"
+          gap={1}
+        >
           💡 Рекомендации по реагированию
         </Typography>
+
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}>
-            <Typography variant="body2">
-              <strong>🟢 Низкий риск (0-1):</strong>
-              <br />
-              • Продолжить мониторинг
-              <br />• Нет необходимости в действиях
-            </Typography>
+            <Box sx={{ p: 2, bgcolor: "white", borderRadius: 2 }}>
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                color="success.main"
+              >
+                🟢 НИЗКИЙ РИСК (0-1)
+              </Typography>
+              <Typography variant="body2">
+                • Продолжить стандартный мониторинг
+                <br />
+                • Нет необходимости в блокировке
+                <br />• Обычная активность
+              </Typography>
+            </Box>
           </Grid>
+
           <Grid item xs={12} md={4}>
-            <Typography variant="body2">
-              <strong>🟡 Средний риск (2):</strong>
-              <br />
-              • Усилить мониторинг
-              <br />
-              • Анализировать активность
-              <br />• Рассмотреть блокировку
-            </Typography>
+            <Box sx={{ p: 2, bgcolor: "white", borderRadius: 2 }}>
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                color="warning.main"
+              >
+                🟡 СРЕДНИЙ РИСК (2)
+              </Typography>
+              <Typography variant="body2">
+                • Усилить мониторинг трафика
+                <br />
+                • Анализировать активность
+                <br />• Рассмотреть временную блокировку
+              </Typography>
+            </Box>
           </Grid>
+
           <Grid item xs={12} md={4}>
-            <Typography variant="body2">
-              <strong>🔴 Высокий/Критический риск (3-4):</strong>
-              <br />
-              • Немедленная блокировка
-              <br />
-              • Анализ логов
-              <br />• Обновление правил безопасности
-            </Typography>
+            <Box sx={{ p: 2, bgcolor: "white", borderRadius: 2 }}>
+              <Typography
+                variant="subtitle1"
+                fontWeight="bold"
+                color="error.main"
+              >
+                🔴 ВЫСОКИЙ/КРИТИЧЕСКИЙ (3-4)
+              </Typography>
+              <Typography variant="body2">
+                • <strong>НЕМЕДЛЕННАЯ БЛОКИРОВКА</strong>
+                <br />
+                • Анализ логов безопасности
+                <br />
+                • Обновление правил файрвола
+                <br />• Расследование инцидента
+              </Typography>
+            </Box>
           </Grid>
         </Grid>
       </Paper>
